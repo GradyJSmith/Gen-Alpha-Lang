@@ -238,7 +238,7 @@ enum class TT {
     And, Or, Not,
     Plus, Minus, Star, Slash, Percent, Assign,
     LParen, RParen, LBrace, RBrace,
-    Comma, Semicolon, Newline, Eof,
+    Comma, Semicolon, Newline, Eof, Cheese,
 };
 
 struct Token { TT type; std::string lexeme; int line = 0; };
@@ -280,7 +280,7 @@ private:
         if(tokens_.empty()) return false;
         auto t=tokens_.back().type;
         return t==TT::Number||t==TT::String||t==TT::Ident||
-               t==TT::RParen||t==TT::Bussin||t==TT::Cap||t==TT::Npc||t==TT::Unc;
+               t==TT::RParen||t==TT::Bussin||t==TT::Cap||t==TT::Npc||t==TT::Unc||t==TT::Cheese;
     }
 
     void scan_token() {
@@ -368,6 +368,7 @@ private:
             {"fr",TT::Fr},{"based",TT::Based},{"ratio",TT::Ratio},
             {"cooked",TT::Cooked},{"L",TT::L},
             {"and",TT::And},{"or",TT::Or},{"not",TT::Not},
+            {"cheese",TT::Cheese},
         };
         auto it=kw.find(word);
         emit(it!=kw.end()?it->second:TT::Ident,word);
@@ -399,9 +400,10 @@ struct BailStmt    {};
 struct OhioStmt    { std::vector<StmtPtr> try_b; std::vector<StmtPtr> catch_b; };
 struct VibeStmt    { ExprPtr cond; std::string msg; };
 struct LowKeyStmt  {};
+struct CheeseStmt  {};
 
 struct Stmt { std::variant<ExprStmt,RizzStmt,TwinStmt,GhostStmt,SlayStmt,
-                            SkibidiStmt,SigmaStmt,BailStmt,OhioStmt,VibeStmt,LowKeyStmt> node; };
+                            SkibidiStmt,SigmaStmt,BailStmt,OhioStmt,VibeStmt,LowKeyStmt,CheeseStmt> node; };
 
 // ═══════════════════════════════════════════════════════════════
 //  Parser
@@ -442,6 +444,7 @@ private:
         if(check(TT::Sigma))    return sigma_stmt();
         if(check(TT::Ohio))     return ohio_stmt();
         if(check(TT::VibeCheck))return vibe_stmt();
+        if(check(TT::Cheese))   return cheese_stmt();
         if(check(TT::Bail))  {advance();skip_sep();auto s=std::make_unique<Stmt>();s->node=BailStmt{};return s;}
         if(check(TT::LowKey)){advance();skip_sep();auto s=std::make_unique<Stmt>();s->node=LowKeyStmt{};return s;}
         auto expr=expression(); skip_sep();
@@ -525,6 +528,12 @@ private:
         if(match(TT::Comma)&&check(TT::String)) msg=advance().lexeme;
         skip_sep();
         auto s=std::make_unique<Stmt>(); s->node=VibeStmt{std::move(cond),msg}; return s;
+    }
+    StmtPtr cheese_stmt(){
+        advance();
+        auto s = std::make_unique<Stmt>();
+        s->node = CheeseStmt{};
+        return s;
     }
 
     std::vector<StmtPtr> block(){
@@ -685,6 +694,7 @@ private:
     void exec(const Stmt& s,Environment& env){ std::visit([&](auto& n){exec_node(n,env);},s.node); }
     void exec_block(const std::vector<StmtPtr>& stmts,Environment& env){ for(auto& s:stmts) exec(*s,env); }
 
+    void exec_node(const CheeseStmt&, Environment&) { /* TODO */ }
     void exec_node(const ExprStmt& s,   Environment& env){ eval(*s.expr,env); }
     void exec_node(const RizzStmt& s,   Environment& env){ env.define(s.name,eval(*s.init,env)); }
     void exec_node(const TwinStmt& s,   Environment& env){ env.define_fn(s.fn->name,s.fn); }
